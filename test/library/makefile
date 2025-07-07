@@ -1,15 +1,17 @@
 # Makefile
 
 # Paths
-INCLUDE_PATH = /home/dhananjaya/workspace/Morpher/hycube_simulator/src
-LIBRARY_PATH = /home/dhananjaya/workspace/Morpher/hycube_simulator/src/build
+# BASE_PATH = /home/vlnitu/virtuoso_artifact/morpher-v2/cppsimulator/src
+BASE_PATH = /home/morpher-v2/cppsimulator/src
+INCLUDE_PATH = $(BASE_PATH)
+LIBRARY_PATH = $(BASE_PATH)/build
 LIBRARY_NAME = hycube_simulator
 
 # Compiler
 CXX = g++
 
 # Source file
-SOURCE = array_add.cpp
+SOURCE = 4radix.cpp
 
 # Output binary
 BINARY = main
