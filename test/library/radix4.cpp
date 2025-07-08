@@ -25,29 +25,29 @@ static void push_u32(std::vector<uint8_t>& v, uint32_t w)
 int main()
 {
     /* 1. dummy init – identical to the software kernel test */
-    idx[3] = 0;  idx[2] = 1;  idx[1] = 2;  idx[0] = 3;
-    PTBL[3][0] = 0;  PTBL[2][1] = 1;  PTBL[1][2] = 2;  PTBL[0][3] = 3;
+    // idx[3] = 0;  idx[2] = 1;  idx[1] = 2;  idx[0] = 3;
+    // PTBL[3][0] = 0;  PTBL[2][1] = 1;  PTBL[1][2] = 2;  PTBL[0][3] = 3;
 
-    /* 2. load the memory-allocation map (word addresses) */
-    std::ifstream f("page_table_walk_mem_alloc.txt");
-    if (!f) { std::perror("map file"); return 1; }
+    // /* 2. load the memory-allocation map (word addresses) */
+    // std::ifstream f("page_table_walk_mem_alloc.txt");
+    // if (!f) { std::perror("map file"); return 1; }
 
-    std::map<std::string, int> base;        // now stores BYTE addresses
-    std::string line;  std::getline(f, line);               // skip header
+    // std::map<std::string, int> base;        // now stores BYTE addresses
+    // std::string line;  std::getline(f, line);               // skip header
 
-    while (std::getline(f, line)) {
-        std::istringstream iss(line);
-        std::string var;  int addr_words;
-        std::getline(iss, var, ',');  iss >> addr_words;
+    // while (std::getline(f, line)) {
+    //     std::istringstream iss(line);
+    //     std::string var;  int addr_words;
+    //     std::getline(iss, var, ',');  iss >> addr_words;
 
-        base[var] = addr_words * WORD_BYTES; // convert words → bytes
-    }
+    //     base[var] = addr_words * WORD_BYTES; // convert words → bytes
+    // }
 
-    /* 3. configure the simulator */
-    HyCUBESim::CGRA cgra(4, 4, 1, 16384);
-    cgra.configCGRA(
-        "page_table_walk_PartPredDFG.xml_DP1_XDim=4_YDim=4_II=5_MTP=1_binary.bin",
-        4, 4);
+    // /* 3. configure the simulator */
+    // HyCUBESim::CGRA cgra(4, 4, 1, 16384);
+    // cgra.configCGRA(
+    //     "page_table_walk_PartPredDFG.xml_DP1_XDim=4_YDim=4_II=5_MTP=1_binary.bin",
+    //     4, 4);
 
     /* 4. write all required objects to DMEM */
     // for (const auto& [name, addr] : base) {
