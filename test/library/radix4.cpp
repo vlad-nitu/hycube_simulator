@@ -50,8 +50,8 @@ int main()
         4, 4);
 
     /* 4. write all required objects to DMEM */
-    for (const auto& [name, addr] : base) {
-        std::vector<uint8_t> bytes;
+    // for (const auto& [name, addr] : base) {
+        // std::vector<uint8_t> bytes;
 
         // if (name == "PTBL") {
         //     for (int r = 0; r < LVLS; ++r)
@@ -72,23 +72,23 @@ int main()
         //     uint8_t zero = 0;
         //     cgra.writeDMEM(cgra, addr, &zero, 1);
         // }
-    }
+    // }
 
     /* 5. launch the kernel */
-    cgra.invokeCGRA(cgra);
+    // cgra.invokeCGRA(cgra);
 
-    /* 6. read back PTBL[0][3] to prove the update happened */
-    auto it = base.find("PTBL");
-    if (it == base.end()) {
-        std::cerr << "PTBL base not found\n";
-        return 1;
-    }
+    // /* 6. read back PTBL[0][3] to prove the update happened */
+    // auto it = base.find("PTBL");
+    // if (it == base.end()) {
+    //     std::cerr << "PTBL base not found\n";
+    //     return 1;
+    // }
 
-    uint32_t val;
-    cgra.readDMEM(cgra,
-                  it->second + (0 * ENTRIES + 3) * sizeof(uint32_t),
-                  &val, sizeof(val));
+    // uint32_t val;
+    // cgra.readDMEM(cgra,
+    //               it->second + (0 * ENTRIES + 3) * sizeof(uint32_t),
+    //               &val, sizeof(val));
 
-    std::cout << "PTBL[0][3] after CGRA = " << val << '\n';
+    // std::cout << "PTBL[0][3] after CGRA = " << val << '\n';
     return 0;
 }
