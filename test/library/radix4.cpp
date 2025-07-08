@@ -1,114 +1,82 @@
-#include <string.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <fstream>
 #include <sstream>
 #include <string>
 #include <map>
+#include <vector>
 #include <iostream>
 #include "CGRA.h"
 
-#define SIZE 512 // page table size
-#define PHYS_MEM_SIZE 1024
+#define LVLS    4
+#define ENTRIES 512
 
-uint64_t PML4[SIZE], PDPT[SIZE], PD[SIZE], PT[SIZE];
-uint64_t physical_memory[PHYS_MEM_SIZE];
-uint64_t va, pa;
+/* -------- host-side test data ---------- */
+static uint32_t PTBL[LVLS][ENTRIES];
+static int      idx [LVLS];
 
-int main() {
-    // ---- 1. Set up test data as in 4radix.c ----
-    va = 0x123456789ABCDEF0;
-    pa = 0;
+/* ---------- helper: pack uint32_t → bytes little-endian ---------- */
+static void push_u32(std::vector<uint8_t>& v, uint32_t w)
+{
+    for (int i = 0; i < 4; ++i) v.push_back( uint8_t(w >> (8*i)) );
+}
 
-    int pml4_idx = (va >> (12 + 9 * 3)) & 0x1FF;
-    int pdpt_idx = (va >> (12 + 9 * 2)) & 0x1FF;
-    int pd_idx   = (va >> (12 + 9 * 1)) & 0x1FF;
-    int pt_idx   = (va >> (12 + 9 * 0)) & 0x1FF;
+int main()
+{
+    /* 1.  dummy init – identical to the software kernel test */
+    idx[3] = 0;  idx[2] = 1;  idx[1] = 2;  idx[0] = 3;
+    PTBL[3][0] = 0;  PTBL[2][1] = 1;  PTBL[1][2] = 2;  PTBL[0][3] = 3;
 
-    PML4[pml4_idx] = (uint64_t)&PDPT[0];
-    PDPT[pdpt_idx] = (uint64_t)&PD[0];
-    PD[pd_idx]     = (uint64_t)&PT[0];
-    PT[pt_idx]     = (uint64_t)&physical_memory[0];
+    /* 2.  load the memory-allocation map produced by Morpher */
+    std::ifstream f("page_table_walk_mem_alloc.txt");
+    if (!f) { std::perror("map file"); return 1; }
 
-    // ---- 2. Load memory allocation map ----
-    std::ifstream file("page_table_walk_mem_alloc.txt");
-    std::map<std::string, int> base_addresses;
-    std::string line;
-    std::getline(file, line); // skip header
-
-    while (std::getline(file, line)) {
+    std::map<std::string,int> base;
+    std::string line;                 std::getline(f,line);          // skip header
+    while (std::getline(f,line)) {
         std::istringstream iss(line);
-        std::string var;
-        int addr;
-        std::getline(iss, var, ',');
-        iss >> addr;
-        base_addresses[var] = addr;
+        std::string var;  int addr;
+        std::getline(iss,var,',');    iss >> addr;
+        base[var] = addr;
     }
 
-    // ---- 3. Setup simulator ----
-    HyCUBESim::CGRA cgra(4, 4, 1, 4096);
-    cgra.configCGRA("page_table_walk_PartPredDFG.xml_DP1_XDim=4_YDim=4_II=4_MTP=1_binary.bin", 4, 4);
+    /* 3.  configure the simulator */
+    HyCUBESim::CGRA cgra(4,4,1,16384);
+    cgra.configCGRA("page_table_walk_PartPredDFG.xml_DP1_XDim=4_YDim=4_II=4_MTP=1_binary.bin",
+                    4,4);
 
-    // ---- 4. Write data to CGRA DMEM ----
-    for (const auto& [name, addr] : base_addresses) {
-        std::vector<uint8_t> data;
+    /* 4.  write all required objects to DMEM */
+    for (const auto& [name,addr] : base) {
+        std::vector<uint8_t> bytes;
 
-        if (name == "va") {
-            for (int i = 0; i < 8; ++i) data.push_back((va >> (8 * i)) & 0xFF);
-            cgra.writeDMEM(cgra, addr, data.data(), 8);
+        if (name == "PTBL") {
+            for (int r=0;r<LVLS;++r)
+                for (int c=0;c<ENTRIES;++c)
+                    push_u32(bytes, PTBL[r][c]);
+            cgra.writeDMEM(cgra, addr, bytes.data(), bytes.size());
         }
-        if (name == "pa") {
-            for (int i = 0; i < 8; ++i) data.push_back((pa >> (8 * i)) & 0xFF);
-            cgra.writeDMEM(cgra, addr, data.data(), 8);
+        else if (name == "idx") {
+            for (int r=0;r<LVLS;++r) push_u32(bytes, idx[r]);
+            cgra.writeDMEM(cgra, addr, bytes.data(), bytes.size());
         }
-
-        if (name == "PML4" || name == "PDPT" || name == "PD" || name == "PT") {
-            uint64_t* table = nullptr;
-            if (name == "PML4") table = PML4;
-            if (name == "PDPT") table = PDPT;
-            if (name == "PD") table = PD;
-            if (name == "PT") table = PT;
-
-            for (int i = 0; i < SIZE; ++i) {
-                for (int j = 0; j < 8; ++j) {
-                    data.push_back((table[i] >> (j * 8)) & 0xFF);
-                }
-            }
-            cgra.writeDMEM(cgra, addr, data.data(), data.size());
-        }
-
-        if (name == "physical_memory") {
-            for (int i = 0; i < PHYS_MEM_SIZE; ++i) {
-                for (int j = 0; j < 8; ++j) {
-                    data.push_back((physical_memory[i] >> (j * 8)) & 0xFF);
-                }
-            }
-            cgra.writeDMEM(cgra, addr, data.data(), data.size());
-        }
-
-        if (name == "loopstart") {
-            uint8_t d = 1;
-            cgra.writeDMEM(cgra, addr, &d, 1);
-        }
-
-        if (name == "loopend") {
-            uint8_t d = 0;
-            cgra.writeDMEM(cgra, addr, &d, 1);
-        }
+        else if (name == "loopstart") { uint8_t one = 1;
+            cgra.writeDMEM(cgra, addr, &one, 1); }
+        else if (name == "loopend")   { uint8_t zero = 0;
+            cgra.writeDMEM(cgra, addr, &zero,1); }
     }
 
-    // ---- 5. Run CGRA kernel ----
+    /* 5.  launch the kernel */
     cgra.invokeCGRA(cgra);
 
-    // ---- 6. Read back physical address ----
-    for (const auto& [name, addr] : base_addresses) {
-        if (name == "pa") {
-            uint8_t buf[8] = {};
-            cgra.readDMEM(cgra, addr, buf, 8);
-            uint64_t out = 0;
-            for (int i = 0; i < 8; ++i) out |= (uint64_t(buf[i]) << (8 * i));
-            std::cout << "Translated PA = 0x" << std::hex << out << std::dec << "\n";
-        }
-    }
+    /* 6.  read back PTBL[0][3] to prove the increment happened */
+    auto it = base.find("PTBL");
+    if (it == base.end()) { std::cerr<<"PTBL base not found\n"; return 1; }
 
+    uint32_t val;
+    cgra.readDMEM(cgra, it->second +                       // base of PTBL
+                         (0*ENTRIES + 3)*sizeof(uint32_t), // row-major offset
+                  &val, sizeof(val));
+
+    std::cout << "PTBL[0][3] after CGRA = " << val << '\n';
     return 0;
 }
