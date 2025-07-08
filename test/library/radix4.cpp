@@ -46,32 +46,32 @@ int main()
     /* 3. configure the simulator */
     HyCUBESim::CGRA cgra(4, 4, 1, 16384);
     cgra.configCGRA(
-        "page_table_walk_PartPredDFG.xml_DP1_XDim=4_YDim=4_II=4_MTP=1_binary.bin",
+        "page_table_walk_PartPredDFG.xml_DP1_XDim=4_YDim=4_II=5_MTP=1_binary.bin",
         4, 4);
 
     /* 4. write all required objects to DMEM */
     for (const auto& [name, addr] : base) {
         std::vector<uint8_t> bytes;
 
-        if (name == "PTBL") {
-            for (int r = 0; r < LVLS; ++r)
-                for (int c = 0; c < ENTRIES; ++c)
-                    push_u32(bytes, PTBL[r][c]);
+        // if (name == "PTBL") {
+        //     for (int r = 0; r < LVLS; ++r)
+        //         for (int c = 0; c < ENTRIES; ++c)
+        //             push_u32(bytes, PTBL[r][c]);
 
-            cgra.writeDMEM(cgra, addr, bytes.data(), bytes.size());
-        }
-        else if (name == "idx") {
-            for (int r = 0; r < LVLS; ++r) push_u32(bytes, idx[r]);
-            cgra.writeDMEM(cgra, addr, bytes.data(), bytes.size());
-        }
-        else if (name == "loopstart") {
-            uint8_t one = 1;
-            cgra.writeDMEM(cgra, addr, &one, 1);
-        }
-        else if (name == "loopend") {
-            uint8_t zero = 0;
-            cgra.writeDMEM(cgra, addr, &zero, 1);
-        }
+        //     cgra.writeDMEM(cgra, addr, bytes.data(), bytes.size());
+        // }
+        // else if (name == "idx") {
+        //     for (int r = 0; r < LVLS; ++r) push_u32(bytes, idx[r]);
+        //     cgra.writeDMEM(cgra, addr, bytes.data(), bytes.size());
+        // }
+        // else if (name == "loopstart") {
+        //     uint8_t one = 1;
+        //     cgra.writeDMEM(cgra, addr, &one, 1);
+        // }
+        // else if (name == "loopend") {
+        //     uint8_t zero = 0;
+        //     cgra.writeDMEM(cgra, addr, &zero, 1);
+        // }
     }
 
     /* 5. launch the kernel */
